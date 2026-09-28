@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Расписание Зарайск — Якшино</title>
+<style>
+  :root {
+    --bg-gradient: linear-gradient(135deg, #6e84ac 0%, #a870d3 100%);
+    --card-bg: #ffffff;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+    --bus-35: #10b981;
+    --bus-39: #3b82f6;
+    --bus-62: #f59e0b;
+    --next-bg: #ecfdf5;
+    --next-border: #10b981;
+    --past-opacity: 0.4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    color: var(--text-main);
+    padding-bottom: 40px;
+  }
+
+  .container { max-width: 600px; margin: 0 auto; padding: 16px; }
+
+  header {
+    text-align: center;
+    color: white;
+    padding: 20px 0 10px;
+  }
+  header h1 { font-size: 1.5em; margin-bottom: 4px; }
+  header .clock { font-size: 0.95em; opacity: 0.8; font-variant-numeric: tabular-nums; }
+
+  /* Direction Tabs */
+  .tabs {
+    display: flex;
+    background: rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 4px;
+    margin: 20px 0 16px;
+    backdrop-filter: blur(5px);
+  }
+  .tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.95em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: white;
+    color: #5172af;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+
+  /* Bus Filters */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .filter-chip {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .filter-chip.active {
+    border-color: #6382ba;
+    background: white;
+  }
+  .filter-chip .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  .schedule-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  
+  .schedule-header {
+    padding: 16px 20px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .schedule-list { list-style: none; }
+  
+  .schedule-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+  }
+  .schedule-item:last-child { border-bottom: none; }
+  
+  .schedule-item.past {
+    opacity: var(--past-opacity);
+  }
+  
+  .schedule-item.next {
+    background: var(--next-bg);
+    border-left: 4px solid var(--next-border);
+  }
+
+  .time-block {
+    display: flex;
+    flex-direction: column;
+  }
+  .time-main {
+    font-size: 1.4em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-main);
+  }
+  .time-sub {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .schedule-item.next .time-sub {
+    color: #059669;
+    font-weight: 600;
+  }
+
+  .bus-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    color: white;
+    font-weight: 800;
+    font-size: 1.1em;
+  }
+  .bus-35 { background: var(--bus-35); }
+  .bus-39 { background: var(--bus-39); }
+  .bus-62 { background: var(--bus-62); }
+
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .empty-state .icon { font-size: 2em; margin-bottom: 10px; }
+
+  @media (max-width: 400px) {
+    .time-main { font-size: 1.2em; }
+    .bus-badge { width: 40px; height: 40px; font-size: 1em; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>🚌 Деревня автобусы</h1>
+    <div class="clock" id="clock">Загрузка...</div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-dir="from" onclick="switchDirection('from')">Зарайск - Якшино</div>
+    <div class="tab" data-dir="to" onclick="switchDirection('to')">Якшино - Зарайск</div>
+  </div>
+
+  <div class="filters" id="filters">
+    <div class="filter-chip active" data-bus="all" onclick="filterBus('all')">Все</div>
+    <div class="filter-chip" data-bus="35" onclick="filterBus('35')"><span class="dot" style="background:var(--bus-35)"></span>35</div>
+    <div class="filter-chip" data-bus="39" onclick="filterBus('39')"><span class="dot" style="background:var(--bus-39)"></span>39</div>
+    <div class="filter-chip" data-bus="62" onclick="filterBus('62')"><span class="dot" style="background:var(--bus-62)"></span>62</div>
+  </div>
+
+  <div class="schedule-card">
+    <div class="schedule-header">
+      <span id="route-title">Зарайск — Якшино</span>
+      <span id="date-label"></span>
+    </div>
+    <ul class="schedule-list" id="schedule-list">
+      <!-- Items generated by JS -->
+    </ul>
+  </div>
+</div>
+
+<script>
+  const data = {
+    from: {
+      title: "Зарайск — Якшино",
+      schedule: [
+        {t:"04:56",b:"62"},{t:"05:21",b:"62"},{t:"05:25",b:"35"},{t:"06:37",b:"39"},{t:"07:12",b:"39"},
+        {t:"07:40",b:"35"},{t:"08:02",b:"39"},{t:"09:02",b:"39"},{t:"09:12",b:"62"},{t:"09:25",b:"35"},
+        {t:"09:32",b:"39"},{t:"10:49",b:"62"},{t:"10:50",b:"35"},{t:"11:17",b:"39"},{t:"12:15",b:"62"},
+        {t:"12:22",b:"39"},{t:"13:15",b:"35"},{t:"13:52",b:"39"},{t:"14:07",b:"62"},{t:"14:27",b:"39"},
+        {t:"14:55",b:"35"},{t:"15:27",b:"39"},{t:"15:27",b:"62"},{t:"16:32",b:"62"},{t:"16:47",b:"39"},
+        {t:"17:22",b:"39"},{t:"18:07",b:"39"},{t:"18:19",b:"62"},{t:"18:37",b:"39"},{t:"19:07",b:"39"},
+        {t:"20:02",b:"62"},{t:"20:40",b:"35"}
+      ]
+    },
+    to: {
+      title: "Якшино — Зарайск",
+      schedule: [
+        {t:"06:28",b:"62"},{t:"06:49",b:"39"},{t:"07:23",b:"35"},{t:"07:24",b:"39"},{t:"07:56",b:"62"},
+        {t:"08:37",b:"35"},{t:"09:14",b:"39"},{t:"09:44",b:"39"},{t:"10:35",b:"62"},{t:"11:32",b:"35"},
+        {t:"11:58",b:"39"},{t:"12:09",b:"62"},{t:"12:32",b:"39"},{t:"13:01",b:"35"},{t:"13:43",b:"62"},
+        {t:"14:04",b:"39"},{t:"14:19",b:"35"},{t:"15:08",b:"39"},{t:"15:39",b:"39"},{t:"15:45",b:"35"},
+        {t:"15:51",b:"62"},{t:"16:47",b:"62"},{t:"16:59",b:"39"},{t:"17:34",b:"39"},{t:"17:51",b:"35"},
+        {t:"18:19",b:"39"},{t:"18:49",b:"39"},{t:"18:56",b:"62"},{t:"19:48",b:"39"},{t:"20:03",b:"35"},
+        {t:"20:23",b:"62"},{t:"21:22",b:"62"},{t:"21:33",b:"35"}
+      ]
+    }
+  };
+
+  let currentDir = 'from';
+  let currentBus = 'all';
+
+  function timeToMin(t) {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  function switchDirection(dir) {
+    currentDir = dir;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.dir === dir));
+    document.getElementById('route-title').textContent = data[dir].title;
+    renderSchedule();
+  }
+
+  function filterBus(bus) {
+    currentBus = bus;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.bus === bus));
+    renderSchedule();
+  }
+
+  function renderSchedule() {
+    const list = document.getElementById('schedule-list');
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    
+    let items = data[currentDir].schedule;
+    if (currentBus !== 'all') {
+      items = items.filter(i => i.b === currentBus);
+    }
+
+    if (items.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="icon">🔍</div>Нет рейсов для выбранного фильтра</div>`;
+      return;
+    }
+
+    let nextIndex = -1;
+    for (let i = 0; i < items.length; i++) {
+      if (timeToMin(items[i].t) >= nowMin) {
+        nextIndex = i;
+        break;
+      }
+    }
+
+    let html = '';
+    items.forEach((item, index) => {
+      const isPast = index < nextIndex;
+      const isNext = index === nextIndex;
+      const cls = isPast ? 'past' : (isNext ? 'next' : '');
+      
+      let subText = '';
+      if (isNext) {
+        const diff = timeToMin(item.t) - nowMin;
+        if (diff === 0) subText = 'Отправляется сейчас!';
+        else if (diff < 60) subText = `через ${diff} мин.`;
+        else {
+          const h = Math.floor(diff / 60);
+          const m = diff % 60;
+          subText = `через ${h} ч. ${m} мин.`;
+        }
+      } else if (isPast) {
+        subText = 'прошёл';
+      } else {
+        subText = 'сегодня';
+      }
+
+      html += `
+        <li class="schedule-item ${cls}">
+          <div class="time-block">
+            <div class="time-main">${item.t}</div>
+            <div class="time-sub">${subText}</div>
+          </div>
+          <div class="bus-badge bus-${item.b}">${item.b}</div>
+        </li>
+      `;
+    });
+
+    if (nextIndex === -1) {
+      html += `<div class="empty-state"><div class="icon">🌙</div>Рейсы на сегодня завершены</div>`;
+    }
+
+    list.innerHTML = html;
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const opts = { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    document.getElementById('clock').textContent = now.toLocaleDateString('ru-RU', opts);
+    
+    // Обновляем дату в шапке таблицы
+    const dateOpts = { day: 'numeric', month: 'short' };
+    document.getElementById('date-label').textContent = now.toLocaleDateString('ru-RU', dateOpts);
+  }
+
+  // Инициализация
+  updateClock();
+  setInterval(updateClock, 1000);
+  renderSchedule();
+  
+  // Обновляем статусы (прошёл/следующий) каждую минуту
+  setInterval(renderSchedule, 60000);
+</script>
+</body>
+</html>
